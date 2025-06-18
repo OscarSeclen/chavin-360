@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chavín 360 Viewer</title>
+  <title>Three.js 360 Viewer</title>
   <style>
     html, body {
       margin: 0;
@@ -15,38 +15,43 @@
   </style>
 </head>
 <body>
-  <!-- Three.js + OrbitControls -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
   <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
-    camera.position.set(0, 0, 0.1); // Cercano al centro de la esfera
+    camera.position.z = 0.1;
 
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     const loader = new THREE.TextureLoader();
-    loader.load('https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg', function (texture) {
+    loader.load(
+      // ✅ Usa la imagen pública de Three.js como prueba
+      'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+      function (texture) {
+        const geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1); // Invierte la esfera para que la cámara esté dentro
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
 
-      const geometry = new THREE.SphereGeometry(500, 60, 40);
-      geometry.scale(-1, 1, 1); // Proyección interior
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = false;
+        controls.enablePan = false;
+        controls.rotateSpeed = 0.25;
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI;
 
-      const material = new THREE.MeshBasicMaterial({ map: texture });
-      const sphere = new THREE.Mesh(geometry, material);
-      scene.add(sphere);
-
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableZoom = false;
-      controls.enablePan = false;
-      controls.rotateSpeed = 0.4;
-      controls.minPolarAngle = 0;
-      controls.maxPolarAngle = Math.PI;
-
-      animate();
-    });
+        animate();
+      },
+      undefined,
+      function (err) {
+        console.error('Error cargando la textura:', err);
+      }
+    );
 
     function animate() {
       requestAnimationFrame(animate);
