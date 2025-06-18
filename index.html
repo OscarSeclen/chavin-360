@@ -30,8 +30,8 @@
 
     // ✅ Reemplaza este link con tu imagen subida
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load(
-      "https://chavin-360.vercel.app/Estela_360_Night_v5.png", // <-- cambia esto si es necesario
+    const texture = new THREE.TextureLoader().load("Estela_360_Night_v5.png");
+ // <-- cambia esto si es necesario
       () => {
         const sphereGeometry = new THREE.SphereGeometry(500, 60, 40);
         sphereGeometry.scale(-1, 1, 1); // mirar hacia dentro
