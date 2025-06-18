@@ -41,13 +41,13 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      color: white;
-      border: none;
-      padding: 10px 20px;
       font-size: 14px;
+      padding: 8px 12px;
+      border: none;
+      background: rgba(255,255,255,0.85);
       border-radius: 8px;
-      z-index: 11;
+      z-index: 10;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -56,10 +56,11 @@
   <div id="info">Arrastra con el dedo o mouse para rotar libremente</div>
   <div id="hotspotSketchfab" class="hotspot">🔗</div>
   <div id="hotspotSwitch" class="hotspot">🌗</div>
-  <button id="gyroButton">Activar giroscopio</button>
+  <button id="gyroButton">🎯 Giroscopio</button>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/DeviceOrientationControls.js"></script>
+
   <script>
     let camera, scene, renderer, mesh;
     let lon = 0, lat = 0;
@@ -67,7 +68,9 @@
     let isUserInteracting = false;
     let onPointerDownX = 0, onPointerDownY = 0;
     let onPointerDownLon = 0, onPointerDownLat = 0;
-    let deviceControls = null, gyroActive = false;
+
+    let gyroEnabled = false;
+    let controls = null;
 
     const nightTexture = "https://cdn.glitch.global/07e79a32-9032-428b-98fd-a08a87bb6c66/Estela_360_Night_v5.png?v=1750198537304";
     const dayTexture   = "https://cdn.glitch.global/07e79a32-9032-428b-98fd-a08a87bb6c66/Estela_360_Day_v1.png?v=1750198088011";
@@ -96,6 +99,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
+      // Eventos touch/mouse
       document.addEventListener('mousedown', onPointerDown);
       document.addEventListener('mousemove', onPointerMove);
       document.addEventListener('mouseup', onPointerUp);
@@ -119,28 +123,42 @@
       });
 
       document.getElementById('gyroButton').addEventListener('click', () => {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission().then(response => {
-            if (response === 'granted') {
-              activateGyro();
-            } else {
-              alert('Permiso denegado para giroscopio');
-            }
-          }).catch(console.error);
+        if (!gyroEnabled) {
+          if (
+            typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function'
+          ) {
+            // iOS
+            DeviceOrientationEvent.requestPermission()
+              .then(response => {
+                if (response === 'granted') enableGyro();
+                else alert("Permiso denegado para el giroscopio.");
+              })
+              .catch(console.error);
+          } else {
+            // Android u otros
+            enableGyro();
+          }
         } else {
-          activateGyro();
+          disableGyro();
         }
       });
     }
 
-    function activateGyro() {
-      deviceControls = new THREE.DeviceOrientationControls(camera);
-      gyroActive = true;
-      document.getElementById('gyroButton').style.display = 'none';
+    function enableGyro() {
+      controls = new THREE.DeviceOrientationControls(camera);
+      gyroEnabled = true;
+      document.getElementById('gyroButton').innerText = "❌ Desactivar";
+    }
+
+    function disableGyro() {
+      gyroEnabled = false;
+      controls = null;
+      document.getElementById('gyroButton').innerText = "🎯 Giroscopio";
     }
 
     function onPointerDown(event) {
-      if (gyroActive) return;
+      if (gyroEnabled) return;
       isUserInteracting = true;
       const x = event.touches ? event.touches[0].clientX : event.clientX;
       const y = event.touches ? event.touches[0].clientY : event.clientY;
@@ -151,7 +169,7 @@
     }
 
     function onPointerMove(event) {
-      if (!isUserInteracting || gyroActive) return;
+      if (!isUserInteracting || gyroEnabled) return;
       const x = event.touches ? event.touches[0].clientX : event.clientX;
       const y = event.touches ? event.touches[0].clientY : event.clientY;
       lon = (onPointerDownX - x) * 0.1 + onPointerDownLon;
@@ -174,8 +192,8 @@
     }
 
     function update() {
-      if (gyroActive && deviceControls) {
-        deviceControls.update();
+      if (gyroEnabled && controls) {
+        controls.update();
       } else {
         lat = Math.max(-85, Math.min(85, lat));
         phi = THREE.MathUtils.degToRad(90 - lat);
@@ -186,7 +204,6 @@
         camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
         camera.lookAt(camera.target);
       }
-
       renderer.render(scene, camera);
     }
   </script>
