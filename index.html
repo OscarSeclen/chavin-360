@@ -3,9 +3,11 @@
 <head>
   <title>Chavín 360 Viewer</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <style>
-    body { margin: 0; overflow: hidden; background: #000; }
+    body, html { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    canvas { display: block; }
+
     #info {
       position: absolute;
       top: 0; width: 100%;
@@ -14,57 +16,150 @@
       font-family: sans-serif;
       font-size: 14px;
       padding: 10px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .hotspot {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      text-align: center;
+      line-height: 48px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    #hotspotSketchfab { bottom: 20px; left: 20px; }
+    #hotspotSwitch    { bottom: 20px; right: 20px; }
+    #gyroButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      border-radius: 8px;
+      z-index: 11;
     }
   </style>
 </head>
 <body>
+
   <div id="info">Arrastra con el dedo o mouse para rotar libremente</div>
+  <div id="hotspotSketchfab" class="hotspot">🔗</div>
+  <div id="hotspotSwitch" class="hotspot">🌗</div>
+  <button id="gyroButton">Activar giroscopio</button>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/DeviceOrientationControls.js"></script>
   <script>
-    let camera, scene, renderer;
+    let camera, scene, renderer, mesh;
     let lon = 0, lat = 0;
     let phi = 0, theta = 0;
     let isUserInteracting = false;
-    let onPointerDownPointerX = 0, onPointerDownPointerY = 0;
+    let onPointerDownX = 0, onPointerDownY = 0;
     let onPointerDownLon = 0, onPointerDownLat = 0;
+    let deviceControls = null, gyroActive = false;
+
+    const nightTexture = "https://cdn.glitch.global/07e79a32-9032-428b-98fd-a08a87bb6c66/Estela_360_Night_v5.png?v=1750198537304";
+    const dayTexture   = "https://cdn.glitch.global/07e79a32-9032-428b-98fd-a08a87bb6c66/Estela_360_Day_v1.png?v=1750198088011";
+    let isDay = false;
 
     init();
     animate();
 
     function init() {
-      const container = document.body;
-
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
       camera.target = new THREE.Vector3(0, 0, 0);
 
       scene = new THREE.Scene();
-
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       geometry.scale(-1, 1, 1);
 
-      const texture = new THREE.TextureLoader().load(
-        "https://chavin-360.vercel.app/Estela_360_Night_v5.png",
-        () => {
-          const material = new THREE.MeshBasicMaterial({ map: texture });
-          const mesh = new THREE.Mesh(geometry, material);
-          scene.add(mesh);
-        },
-        undefined,
-        (error) => {
-          console.error("Error cargando textura:", error);
-        }
-      );
+      const texture = new THREE.TextureLoader().load(nightTexture, () => {
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.y = Math.PI;
+        scene.add(mesh);
+      });
 
       renderer = new THREE.WebGLRenderer();
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
-      container.appendChild(renderer.domElement);
+      document.body.appendChild(renderer.domElement);
 
-      document.addEventListener('pointerdown', onPointerDown, false);
-      document.addEventListener('pointermove', onPointerMove, false);
-      document.addEventListener('pointerup', onPointerUp, false);
-      window.addEventListener('resize', onWindowResize, false);
+      document.addEventListener('mousedown', onPointerDown);
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
+      document.addEventListener('touchstart', onPointerDown);
+      document.addEventListener('touchmove', onPointerMove);
+      document.addEventListener('touchend', onPointerUp);
+
+      window.addEventListener('resize', onWindowResize);
+
+      document.getElementById('hotspotSketchfab').addEventListener('click', () => {
+        window.open("https://sketchfab.com/models/d712680b07854bff81189e53678fea45/embed?autostart=1", "_blank");
+      });
+
+      document.getElementById('hotspotSwitch').addEventListener('click', () => {
+        const url = isDay ? nightTexture : dayTexture;
+        const newTex = new THREE.TextureLoader().load(url, () => {
+          mesh.material.map = newTex;
+          mesh.material.needsUpdate = true;
+          isDay = !isDay;
+        });
+      });
+
+      document.getElementById('gyroButton').addEventListener('click', () => {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          DeviceOrientationEvent.requestPermission().then(response => {
+            if (response === 'granted') {
+              activateGyro();
+            } else {
+              alert('Permiso denegado para giroscopio');
+            }
+          }).catch(console.error);
+        } else {
+          activateGyro();
+        }
+      });
+    }
+
+    function activateGyro() {
+      deviceControls = new THREE.DeviceOrientationControls(camera);
+      gyroActive = true;
+      document.getElementById('gyroButton').style.display = 'none';
+    }
+
+    function onPointerDown(event) {
+      if (gyroActive) return;
+      isUserInteracting = true;
+      const x = event.touches ? event.touches[0].clientX : event.clientX;
+      const y = event.touches ? event.touches[0].clientY : event.clientY;
+      onPointerDownX = x;
+      onPointerDownY = y;
+      onPointerDownLon = lon;
+      onPointerDownLat = lat;
+    }
+
+    function onPointerMove(event) {
+      if (!isUserInteracting || gyroActive) return;
+      const x = event.touches ? event.touches[0].clientX : event.clientX;
+      const y = event.touches ? event.touches[0].clientY : event.clientY;
+      lon = (onPointerDownX - x) * 0.1 + onPointerDownLon;
+      lat = (y - onPointerDownY) * 0.1 + onPointerDownLat;
+    }
+
+    function onPointerUp() {
+      isUserInteracting = false;
     }
 
     function onWindowResize() {
@@ -73,40 +168,25 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    function onPointerDown(event) {
-      isUserInteracting = true;
-      onPointerDownPointerX = event.clientX;
-      onPointerDownPointerY = event.clientY;
-      onPointerDownLon = lon;
-      onPointerDownLat = lat;
-    }
-
-    function onPointerMove(event) {
-      if (isUserInteracting) {
-        lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
-        lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
-      }
-    }
-
-    function onPointerUp() {
-      isUserInteracting = false;
-    }
-
     function animate() {
       requestAnimationFrame(animate);
       update();
     }
 
     function update() {
-      lat = Math.max(-85, Math.min(85, lat));
-      phi = THREE.MathUtils.degToRad(90 - lat);
-      theta = THREE.MathUtils.degToRad(lon);
+      if (gyroActive && deviceControls) {
+        deviceControls.update();
+      } else {
+        lat = Math.max(-85, Math.min(85, lat));
+        phi = THREE.MathUtils.degToRad(90 - lat);
+        theta = THREE.MathUtils.degToRad(lon);
 
-      camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
-      camera.target.y = 500 * Math.cos(phi);
-      camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+        camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
+        camera.target.y = 500 * Math.cos(phi);
+        camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+        camera.lookAt(camera.target);
+      }
 
-      camera.lookAt(camera.target);
       renderer.render(scene, camera);
     }
   </script>
