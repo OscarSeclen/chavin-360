@@ -21,40 +21,40 @@
   <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
-    camera.position.z = 0.1;
+    camera.position.set(0, 0, 0.1);
 
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     const loader = new THREE.TextureLoader();
-    loader.load("Estela_360_Night_v5.png", (texture) => {
+    loader.load("Estela_360_Night_v5.png", function(texture) {
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       geometry.scale(-1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ map: texture });
-      const sphere = new THREE.Mesh(geometry, material);
-      scene.add(sphere);
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
 
       const controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableZoom = false;
       controls.enablePan = false;
-      controls.rotateSpeed = 0.3;
+      controls.rotateSpeed = 0.4;
       controls.minPolarAngle = 0;
       controls.maxPolarAngle = Math.PI;
 
       animate();
-
-      window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
     });
 
     function animate() {
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
     }
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>
