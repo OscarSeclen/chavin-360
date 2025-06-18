@@ -1,78 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Panorama 360 Chavín</title>
-    <style>
-      html, body {
-        margin: 0;
-        height: 100%;
-        overflow: hidden;
-        touch-action: none;
+<head>
+  <title>three.js webgl - equirectangular panorama</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <style>
+    body { background: #000000; margin: 0; overflow: hidden; }
+    #info {
+      position: absolute; top: 0; width: 100%;
+      color: #fff; padding: 5px;
+      font-family: Monospace; font-size: 13px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="info">
+    <a href="https://threejs.org" target="_blank">three.js webgl</a>
+    — equirectangular panorama demo.
+    photo by <a href="http://www.flickr.com/photos/jonragnarsson/2294472375/" target="_blank">Jón Ragnarsson</a>.
+    <br>Drag equirectangular texture into the page.
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script>
+    let camera, scene, renderer;
+    let isUserInteracting = false,
+        lon = 0, lat = 0,
+        onPointerDownLon = 0, onPointerDownLat = 0,
+        onPointerDownPointerX = 0, onPointerDownPointerY = 0;
+
+    init();
+    animate();
+
+    function init() {
+      const container = document.getElementById('container');
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+      camera.target = new THREE.Vector3(0, 0, 0);
+
+      scene = new THREE.Scene();
+
+      const geometry = new THREE.SphereGeometry(500, 60, 40);
+      geometry.scale(-1, 1, 1);
+
+      const texture = new THREE.TextureLoader().load(
+        'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/2294472375_24a3b8ef46_o.jpg'
+      );
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      container.appendChild(renderer.domElement);
+
+      container.addEventListener('pointerdown', onPointerDown, false);
+      document.addEventListener('pointermove', onPointerMove, false);
+      document.addEventListener('pointerup', onPointerUp, false);
+      window.addEventListener('wheel', onDocumentMouseWheel, false);
+
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onPointerDown(event) {
+      isUserInteracting = true;
+      onPointerDownPointerX = event.clientX;
+      onPointerDownPointerY = event.clientY;
+      onPointerDownLon = lon;
+      onPointerDownLat = lat;
+    }
+
+    function onPointerMove(event) {
+      if (isUserInteracting === true) {
+        lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+        lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
       }
-      canvas {
-        display: block;
+    }
+
+    function onPointerUp() {
+      isUserInteracting = false;
+    }
+
+    function onDocumentMouseWheel(event) {
+      camera.fov += event.deltaY * 0.05;
+      camera.updateProjectionMatrix();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      update();
+    }
+
+    function update() {
+      if (!isUserInteracting) {
+        lon += 0.1;
       }
-    </style>
-  </head>
-  <body>
-    <!-- Three.js y OrbitControls -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
+      lat = Math.max(-85, Math.min(85, lat));
+      const phi = THREE.Math.degToRad(90 - lat);
+      const theta = THREE.Math.degToRad(lon);
 
-    <script>
-      let scene, camera, renderer, controls;
+      camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
+      camera.target.y = 500 * Math.cos(phi);
+      camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
 
-      const textureURL = "https://cdn.glitch.global/07e79a32-9032-428b-98fd-a08a87bb6c66/Estela_360_Night_v5.png?v=1750198537304";
-
-      init();
-      animate();
-
-      function init() {
-        scene = new THREE.Scene();
-
-        camera = new THREE.PerspectiveCamera(
-          75,
-          window.innerWidth / window.innerHeight,
-          1,
-          1100
-        );
-        camera.position.set(0, 0, 0.1); // Posición inicial
-
-        const geometry = new THREE.SphereGeometry(500, 60, 40);
-        geometry.scale(-1, 1, 1); // Invertir la esfera
-
-        const texture = new THREE.TextureLoader().load(textureURL);
-        const material = new THREE.MeshBasicMaterial({ map: texture });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableZoom = false;
-        controls.enablePan = false;
-        controls.rotateSpeed = 0.3;
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.1;
-        controls.minPolarAngle = 0;
-        controls.maxPolarAngle = Math.PI;
-      }
-
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update(); // ¡Importante!
-        renderer.render(scene, camera);
-      }
-
-      window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-    </script>
-  </body>
+      camera.lookAt(camera.target);
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
 </html>
