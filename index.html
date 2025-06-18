@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Three.js 360 Viewer</title>
+  <title>Chavín 360 Viewer</title>
   <style>
     html, body {
       margin: 0;
@@ -29,11 +29,11 @@
 
     const loader = new THREE.TextureLoader();
     loader.load(
-      // ✅ Usa la imagen pública de Three.js como prueba
-      'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg',
+      // ✅ Coloca aquí el link de TU imagen 360 (subida a Vercel o Imgur)
+      'https://chavin-360.vercel.app/Estela_360_Night_v5.png',
       function (texture) {
         const geometry = new THREE.SphereGeometry(500, 60, 40);
-        geometry.scale(-1, 1, 1); // Invierte la esfera para que la cámara esté dentro
+        geometry.scale(-1, 1, 1);
         const material = new THREE.MeshBasicMaterial({ map: texture });
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
@@ -49,7 +49,7 @@
       },
       undefined,
       function (err) {
-        console.error('Error cargando la textura:', err);
+        console.error('Error cargando la imagen 360:', err);
       }
     );
 
