@@ -29,7 +29,8 @@
     document.body.appendChild(renderer.domElement);
 
     const loader = new THREE.TextureLoader();
-    loader.load('Estela_360_Night_v5.png', function (texture) {
+    loader.load('https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg', function (texture) {
+
       const geometry = new THREE.SphereGeometry(500, 60, 40);
       geometry.scale(-1, 1, 1); // Proyección interior
 
